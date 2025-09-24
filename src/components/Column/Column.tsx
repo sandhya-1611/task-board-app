@@ -1,9 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Column as ColumnType, Task } from '../../types';
 import TaskCard from '../Task/TaskCard';
-import TaskModalComponent from '../Task/TaskModal';
 import { useTaskBoard } from '../../contexts/TaskBoardContext';
-import { generateId } from '../../utils/helpers';
 
 interface ColumnComponentProps {
   column: ColumnType;
@@ -13,6 +11,7 @@ interface ColumnComponentProps {
   onDrop: (e: React.DragEvent, columnId: string) => void;
   onDragStart: (e: React.DragEvent, task: Task) => void;
   onDragEnd: () => void;
+  onOpenTaskModal: (columnId: string, task?: Task) => void;
 }
 
 const ColumnComponent: React.FC<ColumnComponentProps> = ({ 
@@ -22,33 +21,15 @@ const ColumnComponent: React.FC<ColumnComponentProps> = ({
   onDragOver: parentDragOver, 
   onDrop: parentDrop, 
   onDragStart, 
-  onDragEnd 
+  onDragEnd,
+  onOpenTaskModal
 }) => {
   const { dispatch } = useTaskBoard();
-  const [showTaskModal, setShowTaskModal] = useState(false);
-  const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [showEditColumn, setShowEditColumn] = useState(false);
   const [columnTitle, setColumnTitle] = useState(column.title);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-
-  const handleCreateTask = (taskData: Omit<Task, 'id' | 'createdAt' | 'position'>) => {
-    const newTask: Task = {
-      ...taskData,
-      id: generateId(),
-      createdAt: new Date().toISOString(),
-      position: column.tasks.length
-    };
-    dispatch({ type: 'ADD_TASK', payload: { boardId, columnId: column.id, task: newTask } });
-  };
-
-  const handleUpdateTask = (taskData: Omit<Task, 'id' | 'createdAt' | 'position'>) => {
-    if (!editingTask) return;
-    const updatedTask: Task = { ...editingTask, ...taskData };
-    dispatch({ type: 'UPDATE_TASK', payload: { boardId, task: updatedTask } });
-    setEditingTask(null);
-  };
 
   const handleDeleteTask = (taskId: string) => {
     if (window.confirm('Are you sure you want to delete this task?')) {
@@ -57,8 +38,7 @@ const ColumnComponent: React.FC<ColumnComponentProps> = ({
   };
 
   const handleEditTask = (task: Task) => {
-    setEditingTask(task);
-    setShowTaskModal(true);
+    onOpenTaskModal(column.id, task);
   };
 
   const handleUpdateColumn = () => {
@@ -177,10 +157,10 @@ const ColumnComponent: React.FC<ColumnComponentProps> = ({
       </div>
 
       <button
-        onClick={() => { setEditingTask(null); setShowTaskModal(true); }}
+        onClick={() => onOpenTaskModal(column.id)}
         className="w-full mb-4 px-3 py-2 text-sm font-medium rounded-lg 
                    bg-gradient-to-r from-indigo-400 to-purple-400 hover:from-indigo-500 hover:via-purple-500 hover:to-purple-400
-                   flex items-center justify-center gap-2 transition"
+                   flex items-center justify-center gap-2 transition text-white"
       >
         ➕ Add Task
       </button>
@@ -221,14 +201,6 @@ const ColumnComponent: React.FC<ColumnComponentProps> = ({
           </>
         )}
       </div>
-
-      <TaskModalComponent
-        isOpen={showTaskModal}
-        onClose={() => { setShowTaskModal(false); setEditingTask(null); }}
-        onSave={editingTask ? handleUpdateTask : handleCreateTask}
-        task={editingTask}
-        columnId={column.id}
-      />
     </div>
   );
 };

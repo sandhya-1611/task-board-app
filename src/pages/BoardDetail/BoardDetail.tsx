@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Board, Column as ColumnType, Task } from '../../types';
 import { useTaskBoard } from '../../contexts/TaskBoardContext';
 import ColumnComponent from '../../components/Column/Column';
+import TaskModalComponent from '../../components/Task/TaskModal';
 import { generateId } from '../../utils/helpers';
 
 interface BoardDetailProps {
@@ -14,6 +15,10 @@ const BoardDetail: React.FC<BoardDetailProps> = ({ board, onBackToBoards }) => {
   const [showAddColumn, setShowAddColumn] = useState(false);
   const [newColumnTitle, setNewColumnTitle] = useState('');
   const [draggedTask, setDraggedTask] = useState<Task | null>(null);
+  
+  const [showTaskModal, setShowTaskModal] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [modalColumnId, setModalColumnId] = useState<string>('');
 
   useEffect(() => {
     dispatch({ type: 'SET_CURRENT_BOARD', payload: board });
@@ -36,6 +41,34 @@ const BoardDetail: React.FC<BoardDetailProps> = ({ board, onBackToBoards }) => {
     dispatch({ type: 'ADD_COLUMN', payload: { boardId: currentBoard.id, column: newColumn } });
     setNewColumnTitle('');
     setShowAddColumn(false);
+  };
+
+  const handleOpenTaskModal = (columnId: string, task?: Task) => {
+    setModalColumnId(columnId);
+    setEditingTask(task || null);
+    setShowTaskModal(true);
+  };
+
+  const handleCloseTaskModal = () => {
+    setShowTaskModal(false);
+    setEditingTask(null);
+    setModalColumnId('');
+  };
+
+  const handleCreateTask = (taskData: Omit<Task, 'id' | 'createdAt' | 'position'>) => {
+    const newTask: Task = {
+      ...taskData,
+      id: generateId(),
+      createdAt: new Date().toISOString(),
+      position: 0
+    };
+    dispatch({ type: 'ADD_TASK', payload: { boardId: currentBoard.id, columnId: modalColumnId, task: newTask } });
+  };
+
+  const handleUpdateTask = (taskData: Omit<Task, 'id' | 'createdAt' | 'position'>) => {
+    if (!editingTask) return;
+    const updatedTask: Task = { ...editingTask, ...taskData };
+    dispatch({ type: 'UPDATE_TASK', payload: { boardId: currentBoard.id, task: updatedTask } });
   };
 
   const getFilteredTasks = (columnTasks: Task[]) =>
@@ -161,6 +194,7 @@ const BoardDetail: React.FC<BoardDetailProps> = ({ board, onBackToBoards }) => {
                 onDrop={handleDrop}
                 onDragStart={handleDragStart}
                 onDragEnd={handleDragEnd}
+                onOpenTaskModal={handleOpenTaskModal}
               />
             </div>
           ))}
@@ -233,6 +267,14 @@ const BoardDetail: React.FC<BoardDetailProps> = ({ board, onBackToBoards }) => {
           </div>
         )}
       </div>
+
+      <TaskModalComponent
+        isOpen={showTaskModal}
+        onClose={handleCloseTaskModal}
+        onSave={editingTask ? handleUpdateTask : handleCreateTask}
+        task={editingTask}
+        columnId={modalColumnId}
+      />
     </div>
   );
 };
